@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kcas-read
+  labels:
+    app: kcas
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - configmaps
+  verbs:
+    - get
+    - list
+    - watch
+  resourceNames:
+    - "kube-root-ca.crt"
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kcas-read-crb
+  labels:
+    app: kcas
+roleRef:
+  kind: ClusterRole
+  name: kcas-read
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: kcas
+  namespace: kcas-system

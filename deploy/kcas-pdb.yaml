@@ -1,0 +1,12 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: kcas
+  namespace: kcas-system
+  labels:
+    app: kcas
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: kcas

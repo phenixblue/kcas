@@ -1,0 +1,15 @@
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  labels:
+    app: kcas
+  name: kcas
+  namespace: kcas-system
+spec:
+  maxReplicas: 6
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kcas
+  targetCPUUtilizationPercentage: 80
