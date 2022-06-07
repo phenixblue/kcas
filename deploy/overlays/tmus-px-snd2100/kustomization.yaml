@@ -1,0 +1,7 @@
+resources:
+  - ../../manifests/
+
+namespace: kcas-system
+
+patches:
+  - kcas-ingress-patch.yaml

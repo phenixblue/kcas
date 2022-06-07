@@ -1,0 +1,10 @@
+resources:
+  - kcas-cluster-rbac.yaml
+  - kcas-deploy.yaml
+  - kcas-hpa.yaml
+  - kcas-ingress.yaml
+  - kcas-ns-rbac.yaml
+  - kcas-ns.yaml
+  - kcas-pdb.yaml
+  - kcas-sa.yaml
+  - kcas-svc.yaml

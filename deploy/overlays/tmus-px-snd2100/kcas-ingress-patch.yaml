@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kcas
+  labels:
+    app: kcas
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "true"
+    kubernetes.io/ingress.class: "std-ingress-class"
+spec:
+  rules:
+  - host: cluster-info.px-snd2100.tke.t-mobile.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: kcas
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - cluster-info.px-snd2100.tke.t-mobile.com
