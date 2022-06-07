@@ -124,12 +124,12 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	rootCmd.Flags().StringVar(&cmName, "configmap-name", "kube-root-ca.crt", "Name of the configmap that houses the Kubernetes API Server CA Certificate")
-	rootCmd.Flags().StringVar(&cmNamespace, "configmap-namespace", "kube-system", "Name of the namespace where the configmap is located")
-	rootCmd.Flags().StringVar(&cmKey, "configmap-key", "ca.crt", "Name of the namespace where the configmap is located")
-	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "Name of the kubeconfig file to use. Leave blank for default/in-cluster")
-	rootCmd.Flags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use. Leave blank for default")
+	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().StringVar(&cmName, "configmap-name", "kube-root-ca.crt", "name of the configmap that houses the Kubernetes API Server CA Certificate")
+	rootCmd.Flags().StringVar(&cmNamespace, "configmap-namespace", "kube-system", "name of the namespace where the configmap is located")
+	rootCmd.Flags().StringVar(&cmKey, "configmap-key", "ca.crt", "name of the namespace where the configmap is located")
+	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "name of the kubeconfig file to use. Leave blank for default/in-cluster")
+	rootCmd.Flags().StringVar(&kubeContext, "context", "", "name of the kubeconfig context to use. Leave blank for default")
 }
 
 // initConfig reads in config file and ENV variables if set.
