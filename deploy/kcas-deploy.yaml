@@ -6,11 +6,6 @@ metadata:
   name: kcas
   namespace: kcas-system
 spec:
-  serviceAccountName: kcas
-  securityContext:
-    runAsUser: 1900
-    runAsGroup: 1900
-  
   replicas: 2
   selector:
     matchLabels:
@@ -21,11 +16,15 @@ spec:
       labels:
         app: kcas
     spec:
+      serviceAccountName: kcas
+      securityContext:
+        runAsUser: 1900
+        runAsGroup: 1900
       containers:
       - name: kcas
-        image: thewebroot/kcas:0.0.1
+        image: thewebroot/kcas:v0.0.1
         command:
-          - kcas
+          - /kcas
         ports:
           - containerPort: 5555
         imagePullPolicy: Always

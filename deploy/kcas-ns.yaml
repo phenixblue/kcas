@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kcas-system
-  app: kcas
+  labels: 
+    app: kcas
 spec: {}
 status: {}

@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,15 +43,17 @@ const (
 )
 
 var (
-	cmClient         *cmConfig
-	cfgFile          string
-	cmName           string
-	cmNamespace      string
-	cmKey            string
-	kubeconfig       string
-	kubeContext      string
-	defaultCertValue string
-	cmOptions        metav1.ListOptions
+	cmClient             *cmConfig
+	cfgFile              string
+	cmName               string
+	cmNamespace          string
+	cmKey                string
+	kubeconfig           string
+	kubeContext          string
+	defaultCertValue     string
+	logLevel             string
+	disableTLSProcessing bool
+	cmOptions            metav1.ListOptions
 )
 
 type cmConfig struct {
@@ -61,7 +65,7 @@ type cmConfig struct {
 type infoResponse struct {
 	Pod            string    `json:"pod"`
 	Cluster        string    `json:"cluster"`
-	CaDaysToExpire int       `json:"ca-days"`
+	CaDaysToExpire string    `json:"ca-days"`
 	Datetime       time.Time `json:"datetime"`
 }
 
@@ -130,6 +134,8 @@ func init() {
 	rootCmd.Flags().StringVar(&cmKey, "configmap-key", "ca.crt", "name of the namespace where the configmap is located")
 	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "name of the kubeconfig file to use. Leave blank for default/in-cluster")
 	rootCmd.Flags().StringVar(&kubeContext, "context", "", "name of the kubeconfig context to use. Leave blank for default")
+	rootCmd.Flags().BoolVar(&disableTLSProcessing, "disable-tls-processing", false, "disable the processing of the CA Cert. Used for serving generic configMap data")
+	rootCmd.Flags().StringVar(&logLevel, "log-level", "info", "logging level. One of \"info\" or \"debug\"")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -174,30 +180,37 @@ func caCertRouteHandler(w http.ResponseWriter, req *http.Request) {
 // This route ouputs info about the environment/K8s CA Cert
 func infoRouteHandler(w http.ResponseWriter, req *http.Request) {
 
-	var responseInfo infoResponse
+	var (
+		responseInfo infoResponse
+		caDays       string
+	)
 
-	// Decode Cert string to PEM
-	pemCert, _ := pem.Decode([]byte(cmClient.caCert))
-	if pemCert == nil {
-		fmt.Println(pemCert)
-		panic("Unable to decode K8s CA Cert")
+	if !disableTLSProcessing {
+		// Decode Cert string to PEM
+		pemCert, _ := pem.Decode([]byte(cmClient.caCert))
+		if pemCert == nil {
+			fmt.Println(pemCert)
+			panic("Unable to decode K8s CA Cert")
+		}
+
+		// Parse PEM Cert
+		parsedCert, err := x509.ParseCertificate([]byte(pemCert.Bytes))
+		if err != nil {
+			panic("Unable to parse K8s CA Cert:" + err.Error())
+		}
+
+		// Calculate days until CA Cert Expires
+		caDays = strconv.Itoa(int(time.Until(parsedCert.NotAfter).Hours() / 24))
+	} else {
+		caDays = "N/A"
 	}
-
-	// Parse PEM Cert
-	parsedCert, err := x509.ParseCertificate([]byte(pemCert.Bytes))
-	if err != nil {
-		panic("Unable to parse K8s CA Cert:" + err.Error())
-	}
-
-	// Calculate days until CA Cert Expires
-	caDays := time.Until(parsedCert.NotAfter).Hours() / 24
 
 	// Set Response Body
 	cmClient.mutex.Lock()
 	responseInfo.Cluster = os.Getenv(CLUSTER_ENV)
 	responseInfo.Pod = os.Getenv(POD_ENV)
 	responseInfo.Datetime = time.Now()
-	responseInfo.CaDaysToExpire = int(caDays)
+	responseInfo.CaDaysToExpire = caDays
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(responseInfo)
 	cmClient.mutex.Unlock()
@@ -209,22 +222,6 @@ func infoRouteHandler(w http.ResponseWriter, req *http.Request) {
 // This route outputs the current health/ready status of the app
 func healthzRouteHandler(w http.ResponseWriter, req *http.Request) {
 
-	// Decode Cert string to PEM
-	pemCert, _ := pem.Decode([]byte(cmClient.caCert))
-	if pemCert == nil {
-		fmt.Println(pemCert)
-		panic("Unable to decode K8s CA Cert")
-	}
-
-	// Parse PEM Cert
-	parsedCert, err := x509.ParseCertificate([]byte(pemCert.Bytes))
-	if err != nil {
-		panic("Unable to parse K8s CA Cert:" + err.Error())
-	}
-
-	// Set cert info for validation
-	issuer := parsedCert.Issuer.CommonName
-	subject := parsedCert.Subject.CommonName
 	response := make(map[string]string)
 
 	// Set route type based on whether it's called as "/readyz" or "/healthz"
@@ -233,14 +230,35 @@ func healthzRouteHandler(w http.ResponseWriter, req *http.Request) {
 		routeType = "ready"
 	}
 
-	// Validate we're getting a Cert with loose correlation to the K8s API Server
-	// TODO: See if maybe there's more we can validate here
-	if cmClient.caCert != "" && issuer == "kubernetes" && subject == "kubernetes" {
-		response[routeType] = "true"
-		w.WriteHeader(http.StatusOK)
+	if !disableTLSProcessing {
+		// Decode Cert string to PEM
+		pemCert, _ := pem.Decode([]byte(cmClient.caCert))
+		if pemCert == nil {
+			fmt.Println(pemCert)
+			panic("Unable to decode K8s CA Cert")
+		}
+
+		// Parse PEM Cert
+		parsedCert, err := x509.ParseCertificate([]byte(pemCert.Bytes))
+		if err != nil {
+			panic("Unable to parse K8s CA Cert:" + err.Error())
+		}
+
+		// Set cert info for validation
+		issuer := parsedCert.Issuer.CommonName
+		subject := parsedCert.Subject.CommonName
+
+		// Validate we're getting a Cert with loose correlation to the K8s API Server
+		// TODO: See if maybe there's more we can validate here
+		if cmClient.caCert != "" && issuer == "kubernetes" && subject == "kubernetes" {
+			response[routeType] = "true"
+			w.WriteHeader(http.StatusOK)
+		} else {
+			response[routeType] = "false"
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
 	} else {
-		response[routeType] = "false"
-		w.WriteHeader(http.StatusServiceUnavailable)
+		response[routeType] = "true"
 	}
 
 	// Set Response Body
@@ -253,7 +271,10 @@ func healthzRouteHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(jsonResponse)
 	cmClient.mutex.Unlock()
 
-	fmt.Printf("%q\tendpoint called [ Method: %q, Protocol: %q, User Agent: %q ]\n", req.RequestURI, req.Method, req.Proto, req.Header.Get("User-Agent"))
+	// Only log calls to "/healthz" and "/readyz" if debug log-level is selected
+	if strings.ToLower(logLevel) == "debug" {
+		fmt.Printf("%q\tendpoint called [ Method: %q, Protocol: %q, User Agent: %q ]\n", req.RequestURI, req.Method, req.Proto, req.Header.Get("User-Agent"))
+	}
 }
 
 // watchConfigMap to stand up a watcher for the configMap
@@ -266,7 +287,7 @@ func watchConfigMap(cmClient *cmConfig) {
 	for {
 		watcher, err := cmClient.k8sInterface.CoreV1().ConfigMaps(cmNamespace).Watch(context.TODO(), cmOptions)
 		if err != nil {
-			panic("Unable to create watcher")
+			panic("Unable to create watcher: " + err.Error())
 		}
 
 		// Update CA Cert value
