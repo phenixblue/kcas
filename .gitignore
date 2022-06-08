@@ -15,7 +15,8 @@
 # vendor/
 
 # Temp Stuff
-**/*tmp
+**/*tmp*
 
 # Build stuff
 kcas
+

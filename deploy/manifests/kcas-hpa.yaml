@@ -4,7 +4,6 @@ metadata:
   labels:
     app: kcas
   name: kcas
-  namespace: kcas-system
 spec:
   maxReplicas: 6
   minReplicas: 2

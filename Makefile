@@ -33,3 +33,10 @@ test:
 
 push: container
 	docker push $(CONTAINER_IMAGE):$(RELEASE)
+
+install:
+	kustomize build deploy/overlays/standard | kubectl --dry-run=client apply -f -
+
+install-standalone:
+	namespace="$(namespace)"
+	kustomize build deploy/overlays/standalone | kubectl --dry-run=client apply -n "$(namespace)" -f -

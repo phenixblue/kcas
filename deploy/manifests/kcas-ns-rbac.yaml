@@ -1,10 +1,9 @@
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: kcas
-  namespace: kcas-system
+  name: kcas-role
   labels:
-    app: kcas-role
+    app: kcas
 rules:
 - apiGroups:
   - ""
@@ -20,7 +19,6 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kcas-rb
-  namespace: kcas-system
   labels:
     app: kcas
 roleRef:

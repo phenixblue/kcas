@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -77,6 +78,11 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
+
+		err := validateFlagOptions(cmd)
+		if err != nil {
+			fmt.Printf("Error parsing flag input: %v", err)
+		}
 
 		// Set default value for cert
 		defaultCertValue = "No Cert available"
@@ -351,4 +357,13 @@ func updateCACert(eventChannel <-chan watch.Event, cmClient *cmConfig) {
 			return
 		}
 	}
+}
+
+func validateFlagOptions(cmd *cobra.Command) error {
+	if strings.ToLower(cmd.Flag("log-level").Value.String()) != "info" && strings.ToLower(cmd.Flag("log-level").Value.String()) != "debug" {
+		errString := fmt.Sprintf("option %q passed to %q flag is not valid. Using default value %q\n", cmd.Flag("log-level").Value.String(), cmd.Flag("log-level").Name, cmd.Flag("log-level").DefValue)
+		return errors.New(errString)
+	}
+
+	return nil
 }
